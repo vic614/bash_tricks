@@ -26,11 +26,11 @@ kubectl() {
   case $* in
     delete* ) shift 1
               kube_context=$(kubectl config current-context)
-              if [[ $kube_context =~ .*"$kube_prod_context_regex".* ]]; then
+              if [[ $kube_context =~ .*"$kube_prod_context_regex".* || "$*" == *"--context"* && "$*" =~ .*"$kube_prod_context_regex".* ]] ; then
                 read -p "kubectl delete in production (y or n)?" yn
                 case $yn in
                   [Yy]* ) command kubectl delete "$@";;
-                  [Nn]* ) echo abort.. ;;
+                  * ) echo abort... ;;
                 esac
               else
                 command kubectl delete "$@"
