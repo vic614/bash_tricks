@@ -22,21 +22,23 @@ alias kl="kubectl logs"
 alias kcall='kubectl get nodes --no-headers | awk '\''{print $1}'\'' | xargs -I {} sh -c '\''echo {} ; kubectl describe node {} | grep Allocated -A 5 | grep -ve Event -ve Allocated -ve percent -ve -- ; echo '\'''
 # kubectl wrapper to prevent accidental deletion
 kubectl() {
-  kube_prod_context_regex="_prod-" #Change to a Regex that matches the prod cluster's context
-  case $* in
-    delete* ) shift 1
-              kube_context=$(kubectl config current-context)
-              if [[ $kube_context =~ .*"$kube_prod_context_regex".* || "$*" == *"--context"* && "$*" =~ .*"$kube_prod_context_regex".* ]] ; then
-                read -p "kubectl delete in production (y or n)?" yn
-                case $yn in
-                  [Yy]* ) command kubectl delete "$@";;
-                  * ) echo abort... ;;
-                esac
-              else
-                command kubectl delete "$@"
-              fi ;;
-    * ) command kubectl "$@" ;;
-  esac
+  kube_prod_context_regex="-prod-" #Change to a Regex that matches the prod cluster's context
+  kube_prompt=false
+  if [[ " $@ " =~ " delete " ]] ; then
+    kube_context=$(kubectl config current-context)
+    if [[ "$*" == *"--context"* ]]; then
+      if [[ "$*" =~ .*"$kube_prod_context_regex".* ]]; then kube_prompt=true; fi
+    elif [[ "$kube_context" =~ .*"$kube_prod_context_regex".* ]]; then kube_prompt=true; fi
+  fi
+  if [ "$kube_prompt" = true ]; then
+    read -p "kubectl delete in production (y or n)?" yn
+    case $yn in
+      [Yy]* ) command kubectl "$@";;
+      * ) echo abort... ;;
+    esac
+  else
+    command kubectl "$@"
+  fi
 }
 # Find all resources in a namespace 
 kgall() {
